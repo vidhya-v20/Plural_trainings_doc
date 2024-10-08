@@ -1,0 +1,300 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\csgray\c0\c0;\csgray\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww29740\viewh18040\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs19 \cf0 \cb2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf0 \cb2 BooksController.cs\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf0 \cb2 \
+using BookstoreApi.Data;\
+using BookstoreApi.DTOs;\
+using BookstoreApi.Models;\
+using Microsoft.AspNetCore.Mvc;\
+using Microsoft.EntityFrameworkCore;\
+\
+[Route("api/[controller]")]\
+[ApiController]\
+public class BooksController : ControllerBase\
+\{\
+    private readonly BookstoreContext _context;\
+\
+    public BooksController(BookstoreContext context)\
+    \{\
+        _context = context;\
+    \}\
+\
+    [HttpGet]\
+    public async Task<ActionResult<IEnumerable<BookDTO>>> GetBooks()\
+    \{\
+        var books = await _context.Books\
+            .Include(b => b.Author)\
+            .Include(b => b.Genre)\
+            .Select(b => new BookDTO\
+            \{\
+                book_id = b.book_id,\
+                title = b.title,\
+                author_id = b.author_id,\
+                genre_id = b.genre_id,\
+                price = b.price,\
+                publication_date = b.publication_date,\
+                image = b.image // Handle nullable value\
+            \})\
+            .ToListAsync();\
+\
+        return Ok(books);\
+    \}\
+\
+    [HttpGet("\{id\}")]\
+    public async Task<ActionResult<BookDTO>> GetBook(int id)\
+    \{\
+        var book = await _context.Books\
+            .Include(b => b.Author)\
+            .Include(b => b.Genre)\
+            .Where(b => b.book_id == id)\
+            .Select(b => new BookDTO\
+            \{\
+                book_id = b.book_id,\
+                title = b.title,\
+                author_id = b.author_id,\
+                genre_id = b.genre_id,\
+                price = b.price,\
+                publication_date = b.publication_date,\
+                image = b.image // Handle nullable value\
+            \})\
+            .FirstOrDefaultAsync();\
+\
+        if (book == null)\
+        \{\
+            return NotFound();\
+        \}\
+\
+        return Ok(book);\
+    \}\
+\
+    [HttpPost]\
+    public async Task<ActionResult<BookDTO>> PostBook(BookDTO bookDTO)\
+    \{\
+        // Check if author and genre exist\
+        if (!await _context.Authors.AnyAsync(a => a.author_id == bookDTO.author_id))\
+        \{\
+            return BadRequest("Invalid author ID.");\
+        \}\
+\
+        if (!await _context.Genres.AnyAsync(g => g.genre_id == bookDTO.genre_id))\
+        \{\
+            return BadRequest("Invalid genre ID.");\
+        \}\
+\
+        var book = new Book\
+        \{\
+            title = bookDTO.title,\
+            author_id = bookDTO.author_id,\
+            genre_id = bookDTO.genre_id,\
+            price = bookDTO.price,\
+            publication_date = bookDTO.publication_date,\
+            image = bookDTO.image // Handle nullable value\
+        \};\
+\
+        _context.Books.Add(book);\
+        await _context.SaveChangesAsync();\
+\
+        bookDTO.book_id = book.book_id;\
+\
+        return CreatedAtAction(nameof(GetBook), new \{ id = bookDTO.book_id \}, bookDTO);\
+    \}\
+\
+    [HttpPut("\{id\}")]\
+    public async Task<IActionResult> PutBook(int id, BookDTO bookDTO)\
+    \{\
+        if (id != bookDTO.book_id)\
+        \{\
+            return BadRequest();\
+        \}\
+\
+        var book = await _context.Books.FindAsync(id);\
+        if (book == null)\
+        \{\
+            return NotFound();\
+        \}\
+\
+        book.title = bookDTO.title;\
+        book.author_id = bookDTO.author_id;\
+        book.genre_id = bookDTO.genre_id;\
+        book.price = bookDTO.price;\
+        book.publication_date = bookDTO.publication_date;\
+        book.image = bookDTO.image; // Handle nullable value\
+\
+        _context.Entry(book).State = EntityState.Modified;\
+\
+        try\
+        \{\
+            await _context.SaveChangesAsync();\
+        \}\
+        catch (DbUpdateConcurrencyException)\
+        \{\
+            if (!BookExists(id))\
+            \{\
+                return NotFound();\
+            \}\
+            else\
+            \{\
+                throw;\
+            \}\
+        \}\
+\
+        return NoContent();\
+    \}\
+\
+    [HttpDelete("\{id\}")]\
+    public async Task<IActionResult> DeleteBook(int id)\
+    \{\
+        var book = await _context.Books.FindAsync(id);\
+        if (book == null)\
+        \{\
+            return NotFound();\
+        \}\
+\
+        _context.Books.Remove(book);\
+        await _context.SaveChangesAsync();\
+\
+        return NoContent();\
+    \}\
+\
+    private bool BookExists(int id)\
+    \{\
+        return _context.Books.Any(e => e.book_id == id);\
+    \}\
+\}\
+\
+\'97\'97\'97\'97\'97\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 namespace BookstoreApi.DTOs\
+\{\
+    public class BookDTO\
+    \{\
+        public int book_id \{ get; set; \}\
+        public string title \{ get; set; \}\
+        public int author_id \{ get; set; \}\
+        public int genre_id \{ get; set; \}\
+        public decimal price \{ get; set; \}\
+        public DateTime publication_date \{ get; set; \}\
+        public string? image \{ get; set; \}\
+    \}\
+\}\
+\cb0 \
+\
+\cf3 \cb2 \'97\'97\'97\'97\'97\
+\
+namespace BookstoreApi.Models\
+\{\
+    public class Book\
+    \{\
+        public int book_id \{ get; set; \}\
+        public string title \{ get; set; \}\
+        public int author_id \{ get; set; \}\
+        public int genre_id \{ get; set; \}\
+        public decimal price \{ get; set; \}\
+        public DateTime publication_date \{ get; set; \}\
+        public string? image \{ get; set; \}\
+        public Author Author \{ get; set; \}\
+        public Genre Genre \{ get; set; \}\
+    \}\
+\}\
+\cf0 \
+\'97\'97\
+Bookstorecontext.cs \
+using Microsoft.EntityFrameworkCore;\
+using BookstoreApi.Models;\
+\
+namespace BookstoreApi.Data\
+\{\
+    public class BookstoreContext : DbContext\
+    \{\
+        public BookstoreContext(DbContextOptions<BookstoreContext> options)\
+            : base(options)\
+        \{\
+        \}\
+\
+        public DbSet<Book> Books \{ get; set; \}\
+        public DbSet<Author> Authors \{ get; set; \}\
+        public DbSet<Genre> Genres \{ get; set; \}\
+\
+        protected override void OnModelCreating(ModelBuilder modelBuilder)\
+        \{\
+            // Configure primary keys and relationships\
+\
+            // Configure primary key for Genre\
+            modelBuilder.Entity<Genre>()\
+                .HasKey(g => g.genre_id);\
+\
+            // Configure primary key for Author\
+            modelBuilder.Entity<Author>()\
+                .HasKey(a => a.author_id);\
+\
+            // Configure primary key for Book\
+            modelBuilder.Entity<Book>()\
+                .HasKey(b => b.book_id);\
+\
+            // Configure relationships\
+\
+            // A Genre can have many Books\
+            modelBuilder.Entity<Genre>()\
+                .HasMany(g => g.Books)\
+                .WithOne(b => b.Genre)\
+                .HasForeignKey(b => b.genre_id);\
+\
+            // An Author can have many Books\
+            modelBuilder.Entity<Author>()\
+                .HasMany(a => a.Books)\
+                .WithOne(b => b.Author)\
+                .HasForeignKey(b => b.author_id);\
+\
+            // Seed data for Authors\
+            modelBuilder.Entity<Author>().HasData(\
+                new Author \{ author_id = 1, name = "J.K. Rowling", biography = "British author, best known for the Harry Potter series." \},\
+                new Author \{ author_id = 2, name = "George R.R. Martin", biography = "American novelist and short story writer, known for A Song of Ice and Fire." \}\
+            );\
+\
+            // Seed data for Genres\
+            modelBuilder.Entity<Genre>().HasData(\
+                new Genre \{ genre_id = 1, genre_name = "Fantasy" \},\
+                new Genre \{ genre_id = 2, genre_name = "Science Fiction" \}\
+            );\
+\
+            // Seed data for Books\
+            modelBuilder.Entity<Book>().HasData(\
+                new Book\
+                \{\
+                    book_id = 1,\
+                    title = "Harry Potter and the Sorcerer's Stone",\
+                    author_id = 1,\
+                    genre_id = 1,\
+                    price = 19.99m,\
+                    publication_date = new DateTime(1997, 6, 26),\
+                    image = "harry-potter.jpg"  // Example image URL\
+                \},\
+                new Book\
+                \{\
+                    book_id = 2,\
+                    title = "A Game of Thrones",\
+                    author_id = 2,\
+                    genre_id = 1,\
+                    price = 15.99m,\
+                    publication_date = new DateTime(1996, 8, 6),\
+                    image = "game-of-thrones.jpg"  // Example image URL\
+                \}\
+            );\
+\
+            base.OnModelCreating(modelBuilder);\
+        \}\
+    \}\
+\}\cb0 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf0 \cb2 \
+}
